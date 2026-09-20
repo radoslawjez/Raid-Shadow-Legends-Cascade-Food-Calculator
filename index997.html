@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAID: Shadow Legends — Cascade Food Calculator</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #1a1a2e;
+    color: #eaeaea;
+    max-width: 800px;
+    margin: 30px auto;
+    padding: 0 20px;
+  }
+  h1 { color: #f5c542; font-size: 22px; }
+  .box {
+    background: #22223a;
+    border: 1px solid #3a3a5c;
+    border-radius: 10px;
+    padding: 18px;
+    margin-bottom: 18px;
+  }
+  label { display: block; margin: 10px 0 4px; font-size: 14px; color: #ccc; }
+  select, input[type="number"] {
+    width: 100%;
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid #555;
+    background: #111;
+    color: #fff;
+    box-sizing: border-box;
+  }
+  button {
+    margin-top: 14px;
+    padding: 10px 16px;
+    background: #f5c542;
+    color: #111;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  button:hover { background: #ffd966; }
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14px; }
+  th, td { padding: 8px 10px; border-bottom: 1px solid #333; text-align: left; }
+  th { color: #f5c542; }
+  .note {
+    font-size: 12px;
+    color: #999;
+    margin-top: 10px;
+    line-height: 1.4;
+  }
+  .note a { color: #f5c542; }
+  .highlight { color: #f5c542; font-weight: bold; font-size: 20px; }
+
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .checkbox-row input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+  }
+  .checkbox-row label {
+    margin: 0;
+    cursor: pointer;
+  }
+
+  .owned-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-top: 8px;
+  }
+  .owned-grid div { display: flex; flex-direction: column; }
+  .owned-grid label { font-size: 12px; margin: 0 0 4px; }
+
+  .chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 14px;
+    height: 180px;
+    margin-top: 16px;
+    padding: 0 4px;
+  }
+  .chart-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    height: 100%;
+  }
+  .chart-bar {
+    width: 100%;
+    max-width: 50px;
+    background: linear-gradient(180deg, #f5c542, #c99a1e);
+    border-radius: 4px 4px 0 0;
+    transition: height 0.4s ease;
+  }
+  .chart-value {
+    font-size: 11px;
+    color: #f5c542;
+    margin-bottom: 4px;
+  }
+  .chart-label {
+    font-size: 11px;
+    color: #999;
+    margin-top: 6px;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<h1>🍗 RAID: Shadow Legends — Cascade Food Calculator</h1>
+
+<div class="box">
+  <p>Calculates the TOTAL number of champions of each rank (starting from Rank 2)
+  needed to cascade-feed your main champion, "food on food", from its current
+  Rank up to the target Rank, plus the estimated energy cost. Rank 1 is not
+  counted here as a starting point for the cascade — not because it "doesn't
+  count", but because leveling Rank 1→2 is inefficient when you usually have
+  plenty of 2★ champions straight from Shards.</p>
+
+  <label for="currentRank">Main champion's current Rank:</label>
+  <select id="currentRank">
+    <option value="2">Rank 2</option>
+    <option value="3">Rank 3</option>
+    <option value="4">Rank 4</option>
+    <option value="5">Rank 5</option>
+  </select>
+
+  <label for="targetRank">Target Rank:</label>
+  <select id="targetRank">
+    <option value="3">Rank 3</option>
+    <option value="4">Rank 4</option>
+    <option value="5">Rank 5</option>
+    <option value="6" selected>Rank 6 (max)</option>
+  </select>
+
+  <label>How many champions of each rank do you already have in reserve (duplicates)?</label>
+  <div class="owned-grid">
+    <div><label for="owned2">Rank 2</label><input type="number" id="owned2" value="0" min="0"></div>
+    <div><label for="owned3">Rank 3</label><input type="number" id="owned3" value="0" min="0"></div>
+    <div><label for="owned4">Rank 4</label><input type="number" id="owned4" value="0" min="0"></div>
+    <div><label for="owned5">Rank 5</label><input type="number" id="owned5" value="0" min="0"></div>
+  </div>
+  <p class="note">
+    Only count SPARE champions (besides the main champion you're ranking up) —
+    i.e. duplicates you could feed. Reserves at a given rank reduce the need to
+    grow food from scratch, and that reduction cascades down, lowering the need
+    at lower ranks too.
+  </p>
+
+  <label for="currentLevel">What LEVEL is your MAIN champion at on its CURRENT rank?</label>
+  <input type="number" id="currentLevel" value="1" min="1" max="60">
+  <p class="note">
+    This applies ONLY to the current rank — after ranking up, the level resets
+    to 1 anyway, so at higher ranks we always calculate full leveling from
+    scratch. Leave it at 1 if the champion is fresh at its current rank. Enter
+    the level (visible in-game on the champion's card), and we'll calculate the
+    remaining XP to max from the XP curve ourselves.
+  </p>
+
+  <div class="checkbox-row">
+    <input type="checkbox" id="xpBoost">
+    <label for="xpBoost">Do you have the 100% XP BOOST? (doubles XP gained → 2x less energy)</label>
+  </div>
+
+  <p class="note">
+    ℹ️ Super Raids do NOT affect these calculations — it's 2x energy for 2x XP
+    (and 2x silver/loot), so the XP/energy ratio stays identical. You only gain
+    time (fewer clicks), not energy efficiency.
+  </p>
+
+  <button onclick="calculate()">Calculate cascade</button>
+</div>
+
+<div class="box" id="resultBox" style="display:none;">
+  <h3>Result</h3>
+  <p>Total plain Rank 2 champions needed "at the base" (after subtracting reserves):
+     <span class="highlight" id="baseTotal"></span></p>
+  <div id="breakdownTable"></div>
+  <p class="note">
+    <b>Self</b> = the champion that itself ranks up to the next rank (not eaten,
+    but still needs leveling — see energy). <b>Food (fresh)</b> = units of this
+    rank you still MUST obtain/grow, after subtracting reserves. <b>Reserve
+    used</b> = how many of your declared spare units went into this rank. In the
+    row matching your CURRENT Rank, self is 1 lower — because that's your
+    already-owned champion doing that promotion itself, so the rest calculated
+    there is pure food.
+  </p>
+
+  <h3 style="margin-top:20px;">Estimated energy</h3>
+  <p>Total energy needed (leveling the main champion + the entire food cascade,
+     after accounting for reserves):
+     <span class="highlight" id="totalEnergy"></span></p>
+  <div class="chart" id="energyChart"></div>
+  <p class="note" id="boostNote"></p>
+</div>
+
+<div class="box">
+  <h3>How this is calculated (cascade logic)</h3>
+  <ul>
+    <li>To build ONE champion at Rank R, you need a champion at Rank R-1
+        (which gets promoted) + (R-1) champions at Rank R-1 as food.</li>
+    <li>So a total of <b>R</b> champions of rank R-1 "disappear" (1 gets
+        promoted, the rest are eaten) to produce 1 champion of rank R.</li>
+    <li>We calculate TOP-DOWN: from the target Rank down to Rank 2, at each
+        step subtracting the declared reserve, which cascades down and reduces
+        the need at lower ranks.</li>
+    <li>The calculator also subtracts the "cost already paid" at your current
+        Rank (since your champion is already there), so it only counts the
+        ADDITIONAL food needed from now on.</li>
+  </ul>
+  <p class="note">
+    <b>Energy:</b> only the champion that actually GETS PROMOTED at a given
+    step (self) needs to be leveled to max — food can stay at level 1,
+    regardless of whether it was freshly grown or came from your reserve
+    (reserves only save the cost of GROWING, not the cost of leveling — since
+    food never needs leveling).
+  </p>
+  <p class="note">
+    <b>XP/energy rate:</b> ~1,080 XP/energy is your real measured rate from 9
+    full Brutal 12-3 runs (72 energy, no Super Raids) — the rate held steady
+    in the 1079–1082 range throughout the whole sample. Super Raids don't
+    affect this rate (see the note above).
+  </p>
+</div>
+
+<div class="box">
+  <h3>🏆 Already at Rank 6? Calculate just the leveling</h3>
+  <p class="note">
+    Rank 6 is currently the highest rank in the game — there's no further
+    promotion from it, so the cascade above doesn't cover it. This is a
+    separate, simpler case: just leveling 1→60 (2,010,669 XP to max, per
+    <a href="https://ayumilove.net/raid-shadow-legends-champion-leveling-guide/" target="_blank" rel="noopener">AyumiLove</a>
+    and <a href="https://raidshadowlegends.fandom.com/wiki/Frugal_Farming" target="_blank" rel="noopener">the RAID Wiki</a>).
+  </p>
+
+  <label for="rank6Level">What LEVEL is your Rank 6 champion at now?</label>
+  <input type="number" id="rank6Level" value="1" min="1" max="60">
+
+  <div class="checkbox-row">
+    <input type="checkbox" id="rank6Boost">
+    <label for="rank6Boost">100% XP Boost?</label>
+  </div>
+
+  <button onclick="calculateRank6()" style="margin-top:10px;">Calculate</button>
+
+  <div id="rank6Result" style="display:none; margin-top:14px;">
+    <p><b>Missing XP:</b> <span id="rank6Xp"></span></p>
+    <p><b>Energy needed:</b> <span id="rank6Energy" class="highlight"></span></p>
+    <p class="note" id="rank6Note"></p>
+  </div>
+</div>
+
+<script>
+  const xpToMaxForRank = {
+    2: 81326,
+    3: 200681,
+    4: 449082,
+    5: 963806,
+    6: 2010669 // from research (AyumiLove / RAID Wiki) — Rank 6 isn't part of
+               // the promotion cascade (it's the highest rank), so this XP is
+               // needed ONLY for leveling the champion up on its own
+  };
+
+  // Measured rate: 9 Brutal 12-3 runs, 72 energy, 77,869 XP total
+  // (no Super Raids — Super Raids doesn't change this rate,
+  // it just does 2x energy for 2x XP at once).
+  const XP_PER_ENERGY = 77869 / 72;
+
+  function energyToMaxLevel(rank, boost) {
+    const xp = xpToMaxForRank[rank];
+    const energy = xp / XP_PER_ENERGY;
+    return boost ? energy / 2 : energy;
+  }
+
+  // ===== Level → remaining XP =====
+  // Level caps per Rank (standard RAID: Rank2=20, Rank3=30,
+  // Rank4=40, Rank5=50 — level resets to 1 after every promotion).
+  const RANK_CAP = { 2: 20, 3: 30, 4: 40, 5: 50, 6: 60 };
+
+  // Growth rate of XP cost between consecutive levels, per Rank.
+  // MEASURED from real data:
+  //   Rank 2: k = 0.125
+  //   Rank 3: k = 0.098
+  //   Rank 4: k = 0.086
+  //   Rank 5: k = 0.080
+  // → each Rank has its own, progressively slower growth rate — a
+  // full set of real data, no more "eyeballed" assumptions.
+  const GROWTH_K_BY_RANK = { 2: 0.125, 3: 0.098, 4: 0.086, 5: 0.080 };
+  const GROWTH_K_FALLBACK = 0.080; // fallback, in case a higher rank shows up without a measurement
+
+  function growthKForRank(rank) {
+    return GROWTH_K_BY_RANK[rank] !== undefined ? GROWTH_K_BY_RANK[rank] : GROWTH_K_FALLBACK;
+  }
+
+  function levelUpBaseForRank(rank) {
+    const k = growthKForRank(rank);
+    const growth = Math.exp(k);
+    const n = RANK_CAP[rank] - 1; // number of "level-ups" at this rank
+    const geomSum = growth * (Math.pow(growth, n) - 1) / (growth - 1);
+    return xpToMaxForRank[rank] / geomSum;
+  }
+
+  function remainingXpAtLevel(rank, level) {
+    const cap = RANK_CAP[rank];
+    const clampedLevel = Math.min(Math.max(level, 1), cap);
+    const k = growthKForRank(rank);
+    const growth = Math.exp(k);
+    const A = levelUpBaseForRank(rank);
+    let remaining = 0;
+    for (let n = clampedLevel; n <= cap - 1; n++) {
+      remaining += A * Math.pow(growth, n);
+    }
+    return remaining;
+  }
+
+  function renderChart(labels, values) {
+    const maxVal = Math.max(...values, 0.0001);
+    const container = document.getElementById('energyChart');
+    let html = '';
+    values.forEach((val, i) => {
+      const heightPct = (val / maxVal) * 100;
+      html += `
+        <div class="chart-col">
+          <div class="chart-value">${Math.round(val).toLocaleString('en-US')}</div>
+          <div class="chart-bar" style="height:${heightPct}%;"></div>
+          <div class="chart-label">${labels[i]}</div>
+        </div>`;
+    });
+    container.innerHTML = html;
+  }
+
+  function calculate() {
+    const currentRank = parseInt(document.getElementById('currentRank').value);
+    const targetRank = parseInt(document.getElementById('targetRank').value);
+    const boost = document.getElementById('xpBoost').checked;
+    const currentLevel = parseInt(document.getElementById('currentLevel').value) || 1;
+
+    if (targetRank <= currentRank) {
+      alert("Target Rank must be higher than the current one!");
+      return;
+    }
+
+    const owned = {
+      2: parseInt(document.getElementById('owned2').value) || 0,
+      3: parseInt(document.getElementById('owned3').value) || 0,
+      4: parseInt(document.getElementById('owned4').value) || 0,
+      5: parseInt(document.getElementById('owned5').value) || 0
+    };
+
+    // ===============================================
+    // TOP-DOWN ALGORITHM (from target Rank down to Rank 2)
+    // ===============================================
+    // promotions[r] = how many champions of rank r actually GET PROMOTED to r+1
+    //   (this is "self" — always needs leveling, regardless of
+    //   reserve, since leveling doesn't depend on whether the champion
+    //   was freshly grown or came from reserve — reserve changes
+    //   nothing HERE).
+    // food[r] = promotions[r] * r (rule food(r) = r), part of which is
+    //   covered by reserve (owned[r]), the rest ("fresh") must be
+    //   grown from Rank 2 — and THIS remainder cascades down and
+    //   reduces promotions[r-1] at the lower rank.
+
+    const promotions = {};   // self at each rank (always needs leveling)
+    const foodFresh = {};    // how much food still needs to be obtained after reserve
+    const foodUsedFromOwned = {};
+    const foodTotalNeeded = {};
+    const totalPerRank = {}; // self + foodFresh (i.e. "how much still needs to be obtained at this rank")
+
+    promotions[targetRank - 1] = 1; // main champion, the only promotion at the top
+
+    for (let r = targetRank - 1; r >= 2; r--) {
+      const selfHere = promotions[r];
+
+      const foodNeeded = r * selfHere; // food(r) = r
+      const usedFromOwned = Math.min(foodNeeded, owned[r] || 0);
+      const freshFood = foodNeeded - usedFromOwned;
+
+      // At rank == currentRank: exactly ONE of these "self" slots is
+      // already filled by your main champion (no need to freshly grow
+      // it) — so we subtract exactly 1, not zero out the whole thing
+      // (because with several ranks above currentRank, selfHere can be
+      // a large number, of which only ONE "line" is the main champion).
+      const selfFresh = Math.max(selfHere - (r === currentRank ? 1 : 0), 0);
+
+      foodTotalNeeded[r] = foodNeeded;
+      foodUsedFromOwned[r] = usedFromOwned;
+      foodFresh[r] = freshFood;
+      totalPerRank[r] = selfFresh + freshFood;
+
+      if (r > 2) {
+        promotions[r - 1] = selfFresh + freshFood;
+      }
+    }
+
+    document.getElementById('resultBox').style.display = 'block';
+    document.getElementById('baseTotal').textContent = totalPerRank[2].toLocaleString('en-US') + " champions";
+
+    let tableHtml = '<table><tr><th>Rank</th><th>Needed (fresh)</th>'
+      + '<th>Self (promotes)</th><th>Food (fresh)</th><th>Reserve used</th></tr>';
+    for (let r = 2; r < targetRank; r++) {
+      const selfFresh = Math.max(promotions[r] - (r === currentRank ? 1 : 0), 0);
+      tableHtml += `<tr><td>Rank ${r}</td><td>${totalPerRank[r].toLocaleString('en-US')}</td>`
+        + `<td>${selfFresh.toLocaleString('en-US')}</td>`
+        + `<td>${foodFresh[r].toLocaleString('en-US')}</td>`
+        + `<td>${foodUsedFromOwned[r].toLocaleString('en-US')}</td></tr>`;
+    }
+    tableHtml += '</table>';
+    document.getElementById('breakdownTable').innerHTML = tableHtml;
+
+    // ===== ENERGY =====
+    // Leveling is needed exactly promotions[r] times at rank r
+    // (self ALWAYS needs to be leveled, regardless of whether it's
+    // fresh or from reserve — because the main champion at currentRank
+    // gets leveled anyway, and "self" at higher ranks are champions
+    // that actually get promoted, so they need leveling regardless).
+    let totalEnergy = 0;
+    const stepLabels = [];
+    const stepValues = [];
+    for (let r = 2; r < targetRank; r++) {
+      let levelingHere;
+      if (r === currentRank) {
+        // Exactly ONE of promotions[r] is your main champion —
+        // for it we only count the MISSING XP (based on the level it
+        // already has). The rest (if promotions[r] > 1, because
+        // freshly grown food champions built for higher ranks also
+        // pass through this Rank) still needs FULL leveling from 1.
+        const remainingXp = remainingXpAtLevel(r, currentLevel);
+        let mainChampionEnergy = remainingXp / XP_PER_ENERGY;
+        if (boost) mainChampionEnergy /= 2;
+        const others = Math.max(promotions[r] - 1, 0);
+        levelingHere = mainChampionEnergy + others * energyToMaxLevel(r, boost);
+      } else {
+        levelingHere = promotions[r] * energyToMaxLevel(r, boost);
+      }
+      totalEnergy += levelingHere;
+      stepLabels.push(`R${r}→${r + 1}`);
+      stepValues.push(levelingHere);
+    }
+    document.getElementById('totalEnergy').textContent =
+      Math.round(totalEnergy).toLocaleString('en-US') + " energy";
+    renderChart(stepLabels, stepValues);
+
+    let note = boost
+      ? "✅ Calculated WITH the 100% XP Boost — energy is half of what it would be without it."
+      : "Calculated using the measured ~1,080 XP/energy rate. Check the 100% XP Boost above to see the difference.";
+    if (currentLevel > 1) {
+      note += " Accounted for the fact that the main champion is already at level " + currentLevel
+        + " (XP curve measured from real data for Rank " + currentRank + ").";
+    }
+    document.getElementById('boostNote').textContent = note;
+  }
+
+  function calculateRank6() {
+    const level = parseInt(document.getElementById('rank6Level').value) || 1;
+    const boost = document.getElementById('rank6Boost').checked;
+
+    const remainingXp = remainingXpAtLevel(6, level);
+    let energy = remainingXp / XP_PER_ENERGY;
+    if (boost) energy /= 2;
+
+    document.getElementById('rank6Xp').textContent = Math.round(remainingXp).toLocaleString('en-US') + " XP";
+    document.getElementById('rank6Energy').textContent = Math.round(energy).toLocaleString('en-US') + " energy" + (boost ? " (with XP Boost)" : "");
+    document.getElementById('rank6Note').textContent =
+      "Note: the XP curve growth rate for Rank 6 has NOT been measured yet " +
+      "from real data (unlike Rank 2-5) — temporarily using the rate " +
+      "measured for Rank 5 (k=0.080, the closest measured rank). The total XP " +
+      "to max (2,010,669) is a solid fact from research, but the distribution " +
+      "of that cost across levels 1-60 is estimated.";
+    document.getElementById('rank6Result').style.display = 'block';
+  }
+</script>
+
+</body>
+</html>
